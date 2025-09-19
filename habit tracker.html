@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Habit Tracker</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background: linear-gradient(to right, #ffdde1, #ee9ca7);
+      text-align: center;
+      color: #4a148c;
+      margin: 0;
+      padding: 0;
+    }
+    header {
+      background-color: #f48fb1;
+      padding: 20px;
+      color: white;
+      font-size: 24px;
+      font-weight: bold;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    header a {
+      color: white;
+      text-decoration: none;
+      background: #ec407a;
+      padding: 8px 15px;
+      border-radius: 20px;
+      font-size: 14px;
+    }
+    .circle-container {
+      margin: 30px auto;
+      width: 200px;
+      height: 200px;
+      position: relative;
+    }
+    svg {
+      transform: rotate(-90deg);
+    }
+    circle {
+      fill: none;
+      stroke-width: 15;
+      stroke-linecap: round;
+    }
+    .bg {
+      stroke: #f8bbd0;
+    }
+    .progress {
+      stroke: #ec407a;
+      stroke-dasharray: 565; /* 2πr with r=90 */
+      stroke-dashoffset: 565;
+      transition: stroke-dashoffset 0.5s ease;
+    }
+    .percentage {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      font-size: 28px;
+      font-weight: bold;
+      color: #4a148c;
+    }
+    .habit {
+      background: #f8bbd0;
+      padding: 15px;
+      margin: 10px auto;
+      width: 250px;
+      border-radius: 20px;
+      font-weight: bold;
+      cursor: pointer;
+      transition: 0.3s;
+    }
+    .habit:hover {
+      background: #f06292;
+      color: white;
+    }
+  </style>
+</head>
+<body>
+  <header>
+    🌸 Habit Tracker 🌸
+    <a href="index.html">⬅ Back</a>
+  </header>
+
+  <div class="circle-container">
+    <svg width="200" height="200">
+      <circle class="bg" cx="100" cy="100" r="90"></circle>
+      <circle class="progress" cx="100" cy="100" r="90"></circle>
+    </svg>
+    <div class="percentage" id="percent">0%</div>
+  </div>
+
+  
+  <div class="habit" onclick="increaseProgress(20)">💧 Drink Water</div>
+  <div class="habit" onclick="increaseProgress(20)">🍎 Eat Fruits</div>
+  <div class="habit" onclick="increaseProgress(20)">🏃 Exercise</div>
+  <div class="habit" onclick="increaseProgress(20)">🌿 Healthy Meal</div>
+  <div class="habit" onclick="increaseProgress(20)">😴 Sleep Well</div>
+ 
+  <script>
+    let progress = 0;
+    const circle = document.querySelector('.progress');
+    const percentText = document.getElementById('percent');
+    const radius = 90;
+    const circumference = 2 * Math.PI * radius;
+
+    circle.style.strokeDasharray = circumference;
+
+    function increaseProgress(amount) {
+      if (progress < 100) {
+        progress += amount;
+        if (progress > 100) progress = 100;
+        const offset = circumference - (progress / 100) * circumference;
+        circle.style.strokeDashoffset = offset;
+        percentText.textContent = progress + "%";
+      }
+    }
+  </script>
+</body>
+</html>

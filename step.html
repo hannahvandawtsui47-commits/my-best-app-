@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Real-time Step Counter</title>
+<style>
+:root{
+  --bg:#fff0f6; --accent:#f48fb1; --accent-dark:#ec407a; --text:#4a148c;
+}
+body{font-family:Arial,Helvetica,sans-serif;background:linear-gradient(180deg,var(--bg),#fff);margin:0;color:var(--text);display:flex;flex-direction:column;align-items:center;}
+header{width:100%;padding:18px;background:var(--accent);color:white;text-align:center;font-size:20px;font-weight:700;box-shadow:0 3px 6px rgba(0,0,0,0.12);}
+.card{width:95%;max-width:420px;background:white;border-radius:14px;padding:18px;margin:18px 0;box-shadow:0 6px 18px rgba(0,0,0,0.08);}
+.big{font-size:48px;font-weight:800;margin:12px 0;text-align:center;}
+.small{font-size:14px;color:#5e2a6b;text-align:center;}
+.controls{display:flex;gap:10px;flex-wrap:wrap;justify-content:center;margin-top:12px;}
+button{background:var(--accent);color:white;border:none;padding:10px 14px;border-radius:10px;font-weight:700;cursor:pointer;}
+button.ghost{background:transparent;border:2px solid var(--accent);color:var(--accent);}
+button:hover{background:var(--accent-dark);}
+label{display:block;margin:8px 0;font-weight:700;}
+input[type=range]{width:100%;}
+.row{display:flex;gap:8px;align-items:center;justify-content:space-between;flex-wrap:wrap;}
+.meta{font-size:13px;color:#6b3b6b;margin-top:8px;text-align:center;}
+.notice{font-size:13px;color:#7b1fa2;margin-top:10px;text-align:center;}
+.back-btn { margin-top: 10px; }
+.back-btn button {
+  background-color: #ce93d8;
+  border: none;
+  padding: 10px 20px;
+  border-radius: 20px;
+  color: white;
+  cursor: pointer;
+}
+.back-btn button:hover { background-color: #ab47bc; }
+</style>
+</head>
+<body>
+<header>🏃 Real-time Step Counter</header>
+
+<div class="card">
+  <div class="small">Steps</div>
+  <div id="steps" class="big">0</div>
+
+  <div class="row">
+    <div>
+      <div class="small">Status</div>
+      <div id="status" class="small">Stopped</div>
+    </div>
+    <div>
+      <div class="small">Pace (steps/min)</div>
+      <div id="pace" class="small">--</div>
+    </div>
+  </div>
+
+  <div class="controls">
+    <button id="startBtn">Start</button>
+    <button id="stopBtn" class="ghost">Stop</button>
+    <button id="resetBtn" class="ghost">Reset</button>
+  </div>
+
+  <label for="sensitivity">Sensitivity (lower = more steps)</label>
+  <input id="sensitivity" type="range" min="0.6" max="3.0" step="0.1" value="1.4">
+
+  <div class="meta">
+    <div>Threshold: <span id="thresholdLabel">1.4</span></div>
+    <div id="last" class="meta">Last detection: --</div>
+  </div>
+
+  <div class="notice">
+    Tip: Put your phone in your pocket or hand and walk naturally. On iOS, you'll be asked to allow motion access.
+  </div>
+</div>
+
+<div class="back-btn">
+  <button onclick="window.location.href='index.html'">⬅ Back</button>
+</div>
+
+<script>
+
+let steps = 0;
+let lastPeakTime = 0;
+let peakIntervalMin = 300; 
+let accelBuffer = [];
+const BUF_SIZE = 6;
+let smoothing = 0.8;
+let lastSmoothed = 0;
+let threshold = parseFloat(document.getElementById('sensitivity').value);
+let timestamps = [];
+const PACE_WINDOW = 10 * 60 * 1000;
+let listening = false;
+let motionHandler = null;
+
+const stepsEl = document.getElementById('steps');
+const statusEl = document.getElementById('status');
+const paceEl = document.getElementById('pace');
+const lastEl = document.getElementById('last');
+const sensitivityEl = document.getElementById('sensitivity');
+const thresholdLabel = document.getElementById('thresholdLabel');
+
+function updateUI() {
+  stepsEl.textContent = steps;
+  statusEl.textContent = listening ? 'Running' : 'Stopped';
+  thresholdLabel.textContent = threshold.toFixed(2);
+  const now = Date.now();
+  timestamps = timestamps.filter(t => now - t <= PACE_WINDOW);
+  if (timestamps.length < 2) paceEl.textContent = '--';
+  else paceEl.textContent = Math.round(timestamps.length / ((timestamps[timestamps.length-1]-timestamps[0])/60000));
+}
+
+function resetCounter() {
+  steps = 0;
+  timestamps = [];
+  lastPeakTime = 0;
+  accelBuffer = [];
+  lastSmoothed = 0;
+  updateUI();
+}
+
+function handleMotion(e) {
+  let ax = e.acceleration?.x ?? e.accelerationIncludingGravity?.x;
+  let ay = e.acceleration?.y ?? e.accelerationIncludingGravity?.y;
+  let az = e.acceleration?.z ?? e.accelerationIncludingGravity?.z;
+  if (ax === null) return;
+
+  const mag = Math.sqrt(ax*ax+ay*ay+az*az);
+  lastSmoothed = smoothing*lastSmoothed + (1-smoothing)*mag;
+  accelBuffer.push(lastSmoothed);
+  if (accelBuffer.length > BUF_SIZE) accelBuffer.shift();
+
+  if (accelBuffer.length >= 3) {
+    const n = accelBuffer.length;
+    const prev = accelBuffer[n-2], cur = accelBuffer[n-1], before = accelBuffer[n-3];
+    const now = Date.now();
+    if (cur > prev && prev > before && prev > threshold) {
+      if (now - lastPeakTime > peakIntervalMin) {
+        lastPeakTime = now;
+        steps++; timestamps.push(now);
+        lastEl.textContent = `Last detection: ${new Date(now).toLocaleTimeString()}`;
+        updateUI();
+      }
+    }
+  }
+}
+
+async function startListening() {
+  if (listening) return;
+  if (typeof DeviceMotionEvent !== 'undefined' && typeof DeviceMotionEvent.requestPermission === 'function') {
+    const resp = await DeviceMotionEvent.requestPermission().catch(()=>null);
+    if (resp!=='granted'){alert('Permission denied'); return;}
+  }
+  motionHandler = e=>handleMotion(e);
+  window.addEventListener('devicemotion', motionHandler, {passive:true});
+  listening=true; updateUI();
+}
+
+function stopListening() {
+  if(!listening) return;
+  window.removeEventListener('devicemotion', motionHandler);
+  listening=false; updateUI();
+}
+
+document.getElementById('startBtn').addEventListener('click', startListening);
+document.getElementById('stopBtn').addEventListener('click', stopListening);
+document.getElementById('resetBtn').addEventListener('click', resetCounter);
+sensitivityEl.addEventListener('input', ev=>{threshold=parseFloat(ev.target.value);thresholdLabel.textContent=threshold.toFixed(2);});
+updateUI();
+</script>
+</body>
+</html>

@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Thailand Weather App</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background: linear-gradient(to right, #ffecd2, #fcb69f);
+      text-align: center;
+      padding: 20px;
+      color: #333;
+    }
+    header {
+      background: #d81b60;
+      color: white;
+      padding: 15px;
+      border-radius: 10px;
+      margin-bottom: 20px;
+    }
+    select {
+      padding: 10px;
+      border-radius: 8px;
+      border: 1px solid #aaa;
+      width: 250px;
+      margin-right: 5px;
+    }
+    button {
+      padding: 10px 15px;
+      border: none;
+      border-radius: 8px;
+      background: #ad1457;
+      color: white;
+      cursor: pointer;
+    }
+    button:hover { background: #c2185b; }
+    .weather-box {
+      background: white;
+      padding: 20px;
+      margin-top: 20px;
+      border-radius: 12px;
+      display: inline-block;
+      min-width: 250px;
+      box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+    }
+    img { width: 80px; height: 80px; }
+    .back-btn { margin-top: 20px; }
+    .back-btn button {
+      background: #0288d1;
+      color:white; border:none; padding:10px 20px; border-radius:20px; cursor:pointer;
+    }
+    .back-btn button:hover { background:#0277bd; }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>🇹🇭 Thailand Weather</h1>
+    <p>Select a city to see the weather</p>
+  </header>
+
+  <div>
+    <select id="citySelect">
+      <option value="">-- Select City --</option>
+      <option value="Bangkok">Bangkok</option>
+      <option value="Chiang Mai">Chiang Mai</option>
+      <option value="Phuket">Phuket</option>
+      <option value="Pattaya">Pattaya</option>
+      <option value="Khon Kaen">Khon Kaen</option>
+      <option value="Hat Yai">Hat Yai</option>
+      <option value="Nakhon Ratchasima">Nakhon Ratchasima</option>
+      <option value="Chiang Rai">Chiang Rai</option>
+      <option value="Ayutthaya">Ayutthaya</option>
+      <option value="Hua Hin">Hua Hin</option>
+    </select>
+    <button onclick="getWeather()">Show Weather</button>
+  </div>
+
+  <div id="weatherResult" class="weather-box" style="display:none;"></div>
+
+  <div class="back-btn">
+    <button onclick="window.location.href='index.html'">⬅ Back</button>
+  </div>
+
+<script>
+const apiKey = ""; 
+
+async function getWeather() {
+  const city = document.getElementById("citySelect").value;
+  const resultBox = document.getElementById("weatherResult");
+  if(!city){alert("Please select a city"); return;}
+  resultBox.style.display="block"; resultBox.innerHTML="Loading...";
+
+  if(!apiKey){
+    const demoData={
+      "Bangkok":{temp:34,cond:"Sunny",icon:"01d"},
+      "Chiang Mai":{temp:28,cond:"Cloudy",icon:"03d"},
+      "Phuket":{temp:30,cond:"Rainy",icon:"09d"},
+      "Pattaya":{temp:29,cond:"Partly Cloudy",icon:"02d"},
+      "Khon Kaen":{temp:31,cond:"Sunny",icon:"01d"},
+      "Hat Yai":{temp:27,cond:"Rain Showers",icon:"10d"},
+      "Nakhon Ratchasima":{temp:33,cond:"Hot",icon:"01d"},
+      "Chiang Rai":{temp:26,cond:"Foggy",icon:"50d"},
+      "Ayutthaya":{temp:32,cond:"Clear Sky",icon:"01n"},
+      "Hua Hin":{temp:29,cond:"Breezy",icon:"50d"}
+    };
+    const d = demoData[city];
+    resultBox.innerHTML=`
+      <h2>${city}, Thailand</h2>
+      <img src="https://openweathermap.org/img/wn/${d.icon}@2x.png" alt="">
+      <p><b>${d.temp} °C</b></p>
+      <p>${d.cond}</p>
+    `;
+    return;
+  }
+
+  try{
+    const url=`https://api.openweathermap.org/data/2.5/weather?q=${encodeURIComponent(city)},TH&appid=${apiKey}&units=metric`;
+    const res=await fetch(url);
+    if(!res.ok){resultBox.innerHTML="City not found ❌"; return;}
+    const data=await res.json();
+    resultBox.innerHTML=`
+      <h2>${data.name}, ${data.sys.country}</h2>
+      <img src="https://openweathermap.org/img/wn/${data.weather[0].icon}@2x.png" alt="">
+      <p><b>${Math.round(data.main.temp)} °C</b></p>
+      <p>${data.weather[0].description}</p>
+    `;
+  }catch(err){resultBox.innerHTML="Error fetching data.";}
+}
+</script>
+</body>
+</html>
